@@ -16,22 +16,6 @@ public class HashTableImpl<K, V> implements HashTable<K, V> {
             this.items = new LinkedList<>();
         }
 
-        public List<Item<K, V>> getItems() {
-            return items;
-        }
-
-        public void setValue(V value) {
-            this.value = value;
-        }
-
-        public K getKey() {
-            return key;
-        }
-
-        public V getValue() {
-            return value;
-        }
-
         @Override
         public String toString() {
             return "Item{" +
@@ -43,6 +27,7 @@ public class HashTableImpl<K, V> implements HashTable<K, V> {
 
     private final Item<K, V>[] data;
     private int size;
+    private Item<K, V> currentItem;
 
     public HashTableImpl(int maxSize) {
         this.data = new Item[maxSize * 2];
@@ -57,14 +42,14 @@ public class HashTableImpl<K, V> implements HashTable<K, V> {
         int index = hashFunc(key);
         Item<K, V> newItem = new Item<>(key, value);
 
-        if (data[index].key == null) {
+        if (data[index] == null) {
             data[index] = new Item<>(null, null);
             data[index].items.add(newItem);
             size++;
             return true;
         }
-        
-        List<Item<K, V>> listItem = data[index].getItems();
+
+        List<Item<K, V>> listItem = data[index].items;
 
         for (Item<K, V> item : listItem) {
             if (keyExist(item, newItem, value) || collision(item, newItem, listItem)) {
@@ -74,8 +59,8 @@ public class HashTableImpl<K, V> implements HashTable<K, V> {
         return false;
     }
 
-    private boolean keyExist(final Item<K,V> item,
-                             final Item<K,V> newItem,
+    private boolean keyExist(final Item<K, V> item,
+                             final Item<K, V> newItem,
                              final V value) {
         if (newItem.key.equals(item.key) &&
                 !newItem.value.equals(item.value)) {
@@ -85,11 +70,12 @@ public class HashTableImpl<K, V> implements HashTable<K, V> {
         return false;
     }
 
-    private boolean collision(final Item<K,V> item,
-                              final Item<K,V> newItem,
+    private boolean collision(final Item<K, V> item,
+                              final Item<K, V> newItem,
                               final List<Item<K, V>> listItem) {
-        if (hashFunc(item.key) == hashFunc(newItem.key) ) {
-            // TODO: 24.05.2020  
+        if (hashFunc(item.key) == hashFunc(newItem.key) &&
+                !newItem.key.equals(item.key)) {
+            listItem.add(newItem);
             return true;
         }
         return false;
@@ -98,35 +84,36 @@ public class HashTableImpl<K, V> implements HashTable<K, V> {
     @Override
     public V get(K key) {
         int index = indexOf(key);
-        return index != -1 ? data[index].value : null;
+        if (index == -1) {
+            return null;
+        }
+        return currentItem.value;
     }
-    
+
     @Override
     public V remove(K key) {
         int index = indexOf(key);
         if (index == -1) {
             return null;
         }
+        List<Item<K, V>> listItem = data[index].items;
 
-        Item<K, V> item = data[index];
-        data[index] = null;
-        size--;
-        return item.value;
+        listItem.remove(currentItem);
+        return currentItem.value;
     }
 
     private int indexOf(K key) {
+        currentItem = null;
         int index = hashFunc(key);
-        int count = 0;
-        while (data[index] != null && count < data.length) {
-            Item<K, V> item = data[index];
-            if (item.key.equals(key)) {
-                return index;
+        if (data[index] != null) {
+            List<Item<K, V>> listItem = data[index].items;
+            for (Item<K, V> item : listItem) {
+                if (item.key.equals(key)) {
+                    currentItem = item;
+                    return index;
+                }
             }
-            count++;
-            index += getStep(key);
-            index %= data.length;
         }
-
         return -1;
     }
 
@@ -148,7 +135,8 @@ public class HashTableImpl<K, V> implements HashTable<K, V> {
     public void display() {
         System.out.println("----------");
         for (int i = 0; i < data.length; i++) {
-            System.out.printf("%d = [%s]", i, data[i]);
+            if (data[i] != null) System.out.printf("%d = %s", i, data[i].items);
+            else System.out.printf("%d = %s", i, data[i]);
             System.out.println();
         }
         System.out.println("----------");
